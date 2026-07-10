@@ -1,0 +1,8 @@
+target/
+Cargo.lock
+data/
+*.local.json
+*.local.yaml
+config.local.json
+config.local.yaml
+.env
