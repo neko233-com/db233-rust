@@ -1,7 +1,32 @@
+//! Named parameter handling for SQL queries.
+//!
+//! This module provides functions to convert SQL queries with named parameters
+//! (e.g., `{param_name}`) into standard parameterized queries with positional
+//! placeholders (`?`). This improves SQL readability and maintainability.
+
 use crate::error::{Db233Error, Result};
 use mysql_async::Value;
 use std::collections::HashMap;
 
+/// Replaces named parameters in a SQL query with positional placeholders.
+///
+/// Converts queries like `SELECT * FROM users WHERE id={userId}` into
+/// `SELECT * FROM users WHERE id=?` and builds a corresponding vector of values.
+///
+/// # Parameters
+///
+/// - `sql`: The SQL query with named parameters in `{param_name}` format.
+/// - `params`: A HashMap mapping parameter names to their values.
+///
+/// # Returns
+///
+/// Returns a tuple of (processed SQL query, parameter values in order).
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - A placeholder is not properly closed (missing `}`).
+/// - A required parameter is missing from the params HashMap.
 pub fn replace_named_parameters(
     sql: &str,
     params: &HashMap<String, Value>,
@@ -45,6 +70,19 @@ pub fn replace_named_parameters(
     Ok((new_sql, values))
 }
 
+/// Builds batch named parameters for multiple rows.
+///
+/// Generates the processed SQL query once and builds a vector of parameter vectors,
+/// one for each row in the batch.
+///
+/// # Parameters
+///
+/// - `sql`: The SQL query with named parameters in `{param_name}` format.
+/// - `params_list`: A slice of HashMaps, each representing parameters for one row.
+///
+/// # Returns
+///
+/// Returns a tuple of (processed SQL query, vector of parameter value vectors).
 pub fn build_batch_named_params(
     sql: &str,
     params_list: &[HashMap<String, Value>],
