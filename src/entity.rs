@@ -89,6 +89,8 @@ impl BaseEntity {
 /// # Usage
 ///
 /// ```rust
+/// use db233::define_entity;
+///
 /// define_entity!(User, "users", "id",
 ///     name: String => "name",
 ///     email: String => "email",
@@ -106,7 +108,13 @@ impl BaseEntity {
 #[macro_export]
 macro_rules! define_entity {
     ($name:ident, $table:expr, $pk:expr, $($field:ident: $ty:ty => $col:expr,)*) => {
-        #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+        #[derive(
+            Debug,
+            Clone,
+            $crate::serde::Serialize,
+            $crate::serde::Deserialize,
+            Default
+        )]
         pub struct $name {
             pub id: i64,
             $(pub $field: $ty,)*
@@ -140,6 +148,8 @@ macro_rules! define_entity {
 /// # Usage
 ///
 /// ```rust
+/// use db233::define_entity_with_base;
+///
 /// define_entity_with_base!(PlayerBaseEntity, "player_base",
 ///     name: String => "name",
 ///     level: i32 => "level",
@@ -156,7 +166,13 @@ macro_rules! define_entity {
 #[macro_export]
 macro_rules! define_entity_with_base {
     ($name:ident, $table:expr, $($field:ident: $ty:ty => $col:expr,)*) => {
-        #[derive(Debug, Clone, Serialize, Deserialize, Default)]
+        #[derive(
+            Debug,
+            Clone,
+            $crate::serde::Serialize,
+            $crate::serde::Deserialize,
+            Default
+        )]
         pub struct $name {
             pub base: $crate::entity::BaseEntity,
             $(pub $field: $ty,)*

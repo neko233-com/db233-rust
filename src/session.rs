@@ -31,7 +31,6 @@ use std::time::{Duration, Instant};
 /// Maintains an LRU cache of player sessions, each containing cached entities.
 /// Supports automatic periodic flushing of dirty entities and configurable
 /// entity type limits to control memory usage.
-#[derive(Clone)]
 pub struct SessionRepository {
     /// Database instance for loading/saving entities.
     db: Arc<Db>,
@@ -68,7 +67,8 @@ impl SessionRepository {
         config: EntityCacheConfig,
         cacheable_entities: Vec<CacheableEntitySpec>,
     ) -> Result<Self> {
-        let capacity = std::num::NonZeroUsize::new(config.max_sessions).unwrap_or(std::num::NonZeroUsize::new(1000).unwrap());
+        let capacity = std::num::NonZeroUsize::new(config.max_sessions)
+            .unwrap_or(std::num::NonZeroUsize::new(1000).unwrap());
         let sessions = LruCache::new(capacity);
 
         let mut cacheable_types = HashSet::new();
@@ -115,13 +115,17 @@ impl SessionRepository {
     /// # Returns
     ///
     /// Returns the new session wrapped in an Arc, or an error if loading fails.
-    pub async fn open_session(&self, player_id: i64, entity_types: &[&str]) -> Result<Arc<Session>> {
+    pub async fn open_session(
+        &self,
+        player_id: i64,
+        entity_types: &[&str],
+    ) -> Result<Arc<Session>> {
         let session = Arc::new(Session::new(player_id, self));
 
         if self.config.enabled {
-            for entity_type in entity_types {
-                if self.cacheable_types.contains(*entity_type) {
-                    session.load_entity_type(*entity_type).await?;
+            for &entity_type in entity_types {
+                if self.cacheable_types.contains(entity_type) {
+                    session.load_entity_type(entity_type).await?;
                 }
             }
         }
@@ -182,7 +186,8 @@ impl SessionRepository {
     ///
     /// Sets the running flag to false, causing the flush task to exit on its next iteration.
     pub fn stop(&self) {
-        self.running.store(false, std::sync::atomic::Ordering::Release);
+        self.running
+            .store(false, std::sync::atomic::Ordering::Release);
     }
 
     /// Starts the background periodic flush task.
@@ -194,7 +199,10 @@ impl SessionRepository {
         let self_clone = self.clone();
 
         self.flush_task = Some(tokio::spawn(async move {
-            while self_clone.running.load(std::sync::atomic::Ordering::Acquire) {
+            while self_clone
+                .running
+                .load(std::sync::atomic::Ordering::Acquire)
+            {
                 tokio::time::sleep(interval).await;
                 let _ = self_clone.flush_all().await;
             }
@@ -231,7 +239,10 @@ impl SessionRepository {
             return false;
         }
 
-        let limit = *self.entity_type_limits.get(entity_type).unwrap_or(&usize::MAX);
+        let limit = *self
+            .entity_type_limits
+            .get(entity_type)
+            .unwrap_or(&usize::MAX);
         let count = {
             let counts = self.entity_type_counts.lock();
             *counts.get(entity_type).unwrap_or(&0)
@@ -331,7 +342,9 @@ impl Session {
             entities: RwLock::new(HashMap::new()),
             dirty_entities: Mutex::new(HashSet::new()),
             negative_cache: Mutex::new(HashSet::new()),
-            negative_cache_enabled: std::sync::atomic::AtomicBool::new(repo.config.negative_cache_enabled),
+            negative_cache_enabled: std::sync::atomic::AtomicBool::new(
+                repo.config.negative_cache_enabled,
+            ),
             last_access: Mutex::new(Instant::now()),
         }
     }
@@ -356,9 +369,9 @@ impl Session {
         let type_name = std::any::type_name::<T>();
         let entities = self.entities.read();
 
-        entities.get(type_name).and_then(|entity| {
-            entity.downcast_ref::<T>().cloned()
-        })
+        entities
+            .get(type_name)
+            .and_then(|entity| entity.downcast_ref::<T>().cloned())
     }
 
     /// Gets a cached entity, or loads it from the database if not found.
@@ -424,7 +437,9 @@ impl Session {
         self.touch();
 
         if !self.repo.is_cacheable(std::any::type_name::<T>()) {
-            return Err(Db233Error::SessionError("entity type not cacheable".to_string()));
+            return Err(Db233Error::SessionError(
+                "entity type not cacheable".to_string(),
+            ));
         }
 
         let type_name = std::any::type_name::<T>();
@@ -524,7 +539,8 @@ impl Session {
     ///
     /// - `enabled`: True to enable negative caching, false to disable.
     pub fn set_negative_cache_enabled(&self, enabled: bool) {
-        self.negative_cache_enabled.store(enabled, std::sync::atomic::Ordering::Release);
+        self.negative_cache_enabled
+            .store(enabled, std::sync::atomic::Ordering::Release);
     }
 
     /// Checks if negative caching is enabled for this session.
@@ -533,7 +549,8 @@ impl Session {
     ///
     /// Returns true if negative caching is enabled, false otherwise.
     pub fn negative_cache_enabled(&self) -> bool {
-        self.negative_cache_enabled.load(std::sync::atomic::Ordering::Acquire)
+        self.negative_cache_enabled
+            .load(std::sync::atomic::Ordering::Acquire)
     }
 
     /// Loads entities of a specific type into the session.

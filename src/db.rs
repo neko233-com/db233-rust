@@ -23,7 +23,6 @@ use mysql_async::Value;
 /// Wraps the connection pool and provides high-level methods for querying,
 /// inserting, updating, and deleting entities. Supports WAL for data durability
 /// and session repository for game server scenarios.
-#[derive(Clone)]
 pub struct Db {
     /// Connection pool for database operations.
     pool: DbPool,
@@ -109,7 +108,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns a vector of HashMaps, or an error if the query fails.
-    pub async fn query_map(&self, sql: &str, params: &[Value]) -> Result<Vec<std::collections::HashMap<String, Value>>> {
+    pub async fn query_map(
+        &self,
+        sql: &str,
+        params: &[Value],
+    ) -> Result<Vec<std::collections::HashMap<String, Value>>> {
         let mut conn = DbConnection::new(&self.pool).await?;
         let rows = conn.query(sql, params).await?;
         OrmHandler::query_to_map(rows).await
@@ -256,7 +259,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns a vector of HashMaps, or an error if the query fails.
-    pub async fn query_named(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<Vec<std::collections::HashMap<String, Value>>> {
+    pub async fn query_named(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<Vec<std::collections::HashMap<String, Value>>> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.query_map(&new_sql, &values).await
     }
@@ -271,7 +278,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the first column of the first row as i64, or 0 if no results.
-    pub async fn query_named_to_int64(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<i64> {
+    pub async fn query_named_to_int64(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<i64> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.query_to_int64(&new_sql, &values).await
     }
@@ -286,7 +297,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the first column of the first row as String, or empty string if no results.
-    pub async fn query_named_to_string(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<String> {
+    pub async fn query_named_to_string(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<String> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.query_to_string(&new_sql, &values).await
     }
@@ -301,7 +316,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the first column of each row as Vec<i64>.
-    pub async fn query_named_to_int64_slice(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<Vec<i64>> {
+    pub async fn query_named_to_int64_slice(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<Vec<i64>> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.query_to_int64_slice(&new_sql, &values).await
     }
@@ -316,7 +335,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the first column of each row as Vec<String>.
-    pub async fn query_named_to_string_slice(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<Vec<String>> {
+    pub async fn query_named_to_string_slice(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<Vec<String>> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.query_to_string_slice(&new_sql, &values).await
     }
@@ -331,7 +354,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the number of affected rows, or an error if execution fails.
-    pub async fn exec_update_named(&self, sql: &str, params: &std::collections::HashMap<String, Value>) -> Result<u64> {
+    pub async fn exec_update_named(
+        &self,
+        sql: &str,
+        params: &std::collections::HashMap<String, Value>,
+    ) -> Result<u64> {
         let (new_sql, values) = replace_named_parameters(sql, params)?;
         self.exec(&new_sql, &values).await
     }
@@ -346,7 +373,11 @@ impl Db {
     /// # Returns
     ///
     /// Returns the total number of affected rows across all executions.
-    pub async fn exec_update_multi_rows_named(&self, sql: &str, params_list: &[std::collections::HashMap<String, Value>]) -> Result<u64> {
+    pub async fn exec_update_multi_rows_named(
+        &self,
+        sql: &str,
+        params_list: &[std::collections::HashMap<String, Value>],
+    ) -> Result<u64> {
         let (new_sql, batch_values) = build_batch_named_params(sql, params_list)?;
         let mut total_affected = 0;
         for values in batch_values {
@@ -372,12 +403,12 @@ impl Db {
             return Ok(0);
         }
         let row = &results[0];
-        for (_, v) in row {
+        for v in row.values() {
             if let mysql_async::Value::Int(i) = v {
-                    return Ok(*i);
-                } else if let mysql_async::Value::UInt(u) = v {
-                    return Ok(*u as i64);
-                }
+                return Ok(*i);
+            } else if let mysql_async::Value::UInt(u) = v {
+                return Ok(*u as i64);
+            }
         }
         Ok(0)
     }
@@ -398,7 +429,7 @@ impl Db {
             return Ok(String::new());
         }
         let row = &results[0];
-        for (_, v) in row {
+        for v in row.values() {
             if let mysql_async::Value::Bytes(b) = v {
                 if let Ok(s) = String::from_utf8(b.clone()) {
                     return Ok(s);
@@ -422,13 +453,12 @@ impl Db {
         let results = self.query_map(sql, params).await?;
         let mut output = Vec::with_capacity(results.len());
         for row in results {
-            for (_, v) in row {
+            if let Some(v) = row.into_values().next() {
                 if let mysql_async::Value::Int(i) = v {
                     output.push(i);
                 } else if let mysql_async::Value::UInt(u) = v {
                     output.push(u as i64);
                 }
-                break;
             }
         }
         Ok(output)
@@ -448,13 +478,10 @@ impl Db {
         let results = self.query_map(sql, params).await?;
         let mut output = Vec::with_capacity(results.len());
         for row in results {
-            for (_, v) in row {
-                if let mysql_async::Value::Bytes(b) = v {
-                    if let Ok(s) = String::from_utf8(b.clone()) {
-                        output.push(s);
-                    }
+            if let Some(mysql_async::Value::Bytes(b)) = row.into_values().next() {
+                if let Ok(s) = String::from_utf8(b) {
+                    output.push(s);
                 }
-                break;
             }
         }
         Ok(output)
@@ -477,7 +504,7 @@ impl Db {
             return Ok(Vec::new());
         }
 
-        let placeholders = format!("{}", "?,".repeat(ids.len()).trim_end_matches(','));
+        let placeholders = "?,".repeat(ids.len()).trim_end_matches(',').to_string();
         let sql = format!(
             "SELECT * FROM {} WHERE {} IN ({})",
             T::table_name(),
@@ -509,7 +536,7 @@ impl Db {
             return Ok(Vec::new());
         }
 
-        let chunk_size = (ids.len() + 15) / 16;
+        let chunk_size = ids.len().div_ceil(16);
         let chunks: Vec<&[i64]> = ids.chunks(chunk_size).collect();
 
         let mut tasks = Vec::with_capacity(chunks.len());
@@ -523,7 +550,9 @@ impl Db {
 
         let mut results = Vec::new();
         for task in tasks {
-            let chunk_results = task.await.map_err(|e| Db233Error::QueryError(format!("task join error: {}", e)));
+            let chunk_results = task
+                .await
+                .map_err(|e| Db233Error::QueryError(format!("task join error: {}", e)));
             let chunk_results = chunk_results??;
             results.extend(chunk_results);
         }
@@ -577,11 +606,14 @@ impl Db {
             self.enable_wal(&perf_config.local_journal_path)?;
         }
 
-        let session_repo = std::sync::Arc::new(SessionRepository::new(
-            self.clone(),
-            perf_config.entity_cache,
-            opts.cacheable_entities,
-        ).await?);
+        let session_repo = std::sync::Arc::new(
+            SessionRepository::new(
+                self.clone(),
+                perf_config.entity_cache,
+                opts.cacheable_entities,
+            )
+            .await?,
+        );
 
         self.session_repo = Some(session_repo.clone());
         Ok(session_repo)

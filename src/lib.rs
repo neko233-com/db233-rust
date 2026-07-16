@@ -8,6 +8,10 @@ pub mod orm;
 pub mod session;
 pub mod wal;
 
+// Re-export dependencies used by public macros and examples.
+pub use mysql_async;
+pub use serde;
+
 #[cfg(test)]
 pub mod orm_tests;
 

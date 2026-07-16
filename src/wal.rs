@@ -17,6 +17,7 @@
 //! - Separate pending file for incomplete writes
 
 use crate::error::{Db233Error, Result};
+use chrono;
 use mysql_async::Value;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};
@@ -25,7 +26,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use chrono;
 
 /// A single write entry in the WAL log.
 ///
@@ -71,9 +71,9 @@ impl From<Value> for ValueSerde {
             Value::UInt(u) => ValueSerde::UInt(u),
             Value::Float(f) => ValueSerde::Float(f.into()),
             Value::Double(f) => ValueSerde::Float(f),
-            Value::Date(y, m, d, hh, mm, ss, _) => {
-                ValueSerde::Bytes(format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", y, m, d, hh, mm, ss).into_bytes())
-            }
+            Value::Date(y, m, d, hh, mm, ss, _) => ValueSerde::Bytes(
+                format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", y, m, d, hh, mm, ss).into_bytes(),
+            ),
             Value::Time(_neg, _days, hh, mm, ss, _) => {
                 ValueSerde::Bytes(format!("{:02}:{:02}:{:02}", hh, mm, ss).into_bytes())
             }
@@ -170,13 +170,13 @@ impl LocalWriteJournal {
             params: params.iter().map(|p| (*p).clone().into()).collect(),
         };
 
-        let json_str = serde_json::to_string(&entry)
-            .map_err(|e| Db233Error::WalError(e.to_string()))?;
+        let json_str =
+            serde_json::to_string(&entry).map_err(|e| Db233Error::WalError(e.to_string()))?;
 
         let mut writer = self.writer.lock().await;
-        writeln!(writer, "{}", json_str)
-            .map_err(|e| Db233Error::WalError(e.to_string()))?;
-        writer.flush()
+        writeln!(writer, "{}", json_str).map_err(|e| Db233Error::WalError(e.to_string()))?;
+        writer
+            .flush()
             .map_err(|e| Db233Error::WalError(e.to_string()))?;
 
         Ok(())
@@ -194,7 +194,8 @@ impl LocalWriteJournal {
         self.running.store(false, Ordering::Release);
 
         let mut writer = self.writer.lock().await;
-        writer.flush()
+        writer
+            .flush()
             .map_err(|e| Db233Error::WalError(e.to_string()))?;
 
         Ok(())
@@ -215,8 +216,7 @@ impl LocalWriteJournal {
             return Ok(Vec::new());
         }
 
-        let file = File::open(&journal_path)
-            .map_err(|e| Db233Error::WalError(e.to_string()))?;
+        let file = File::open(&journal_path).map_err(|e| Db233Error::WalError(e.to_string()))?;
         let reader = BufReader::new(file);
 
         let mut entries = Vec::new();
@@ -226,8 +226,8 @@ impl LocalWriteJournal {
                 continue;
             }
 
-            let entry: WriteEntry = serde_json::from_str(&line)
-                .map_err(|e| Db233Error::WalError(e.to_string()))?;
+            let entry: WriteEntry =
+                serde_json::from_str(&line).map_err(|e| Db233Error::WalError(e.to_string()))?;
             entries.push(entry);
         }
 
@@ -249,8 +249,7 @@ impl LocalWriteJournal {
             return Ok(Vec::new());
         }
 
-        let file = File::open(&pending_path)
-            .map_err(|e| Db233Error::WalError(e.to_string()))?;
+        let file = File::open(pending_path).map_err(|e| Db233Error::WalError(e.to_string()))?;
         let reader = BufReader::new(file);
 
         let mut entries = Vec::new();
@@ -260,8 +259,8 @@ impl LocalWriteJournal {
                 continue;
             }
 
-            let entry: WriteEntry = serde_json::from_str(&line)
-                .map_err(|e| Db233Error::WalError(e.to_string()))?;
+            let entry: WriteEntry =
+                serde_json::from_str(&line).map_err(|e| Db233Error::WalError(e.to_string()))?;
             entries.push(entry);
         }
 
