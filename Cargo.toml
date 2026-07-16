@@ -6,7 +6,7 @@ description = "Rust ORM / Database library for stateful game servers with high Q
 license = "Apache-2.0"
 repository = "https://github.com/neko233-com/db233-rust"
 keywords = ["orm", "mysql", "game-server", "session-cache", "wal"]
-categories = ["database", "orm"]
+categories = ["database"]
 
 [dependencies]
 mysql_async = "0.33"
