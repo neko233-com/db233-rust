@@ -1,8 +1,8 @@
 use db233::{
     config::DbConnectionConfig,
     db::Db,
-    entity::{BaseEntity, DbEntity},
     define_entity_with_base,
+    entity::{BaseEntity, DbEntity},
 };
 use rand::Rng;
 use std::time::{Duration, Instant};
@@ -17,18 +17,13 @@ define_entity_with_base!(PerformanceTestEntity, "performance_test",
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let config = DbConnectionConfig::new(
-        "127.0.0.1",
-        3306,
-        "root",
-        "root",
-        "db233_rust",
-    );
+    let config = DbConnectionConfig::new("127.0.0.1", 3306, "root", "root", "db233_rust");
 
     let mut db = Db::new(config, 1).await?;
 
-    let _ = db.exec(
-        r#"CREATE TABLE IF NOT EXISTS performance_test (
+    let _ = db
+        .exec(
+            r#"CREATE TABLE IF NOT EXISTS performance_test (
             id BIGINT PRIMARY KEY AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             score BIGINT DEFAULT 0,
@@ -36,8 +31,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             created_at BIGINT,
             updated_at BIGINT
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"#,
-        &[],
-    ).await;
+            &[],
+        )
+        .await;
 
     let _ = db.exec("TRUNCATE TABLE performance_test", &[]).await;
 
@@ -62,16 +58,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 name: format!("Player_{}", id),
                 score: rand::thread_rng().gen_range(0..1_000_000),
-                data: format!("{{\"level\":{},\"items\":[]}}", rand::thread_rng().gen_range(1..100)),
+                data: format!(
+                    "{{\"level\":{},\"items\":[]}}",
+                    rand::thread_rng().gen_range(1..100)
+                ),
             });
         }
         db.save_batch_upsert(&entities).await?;
-        println!("Inserted batch {} of {} ({:.1}%)", i + 1, total_records / batch_size, ((i + 1) * 100) as f64 / ((total_records / batch_size) as f64));
+        println!(
+            "Inserted batch {} of {} ({:.1}%)",
+            i + 1,
+            total_records / batch_size,
+            ((i + 1) * 100) as f64 / ((total_records / batch_size) as f64)
+        );
     }
     let elapsed = start.elapsed();
     println!();
     println!("Batch insert time: {:?}", elapsed);
-    println!("Throughput: {:.1} records/sec", total_records as f64 / elapsed.as_secs_f64());
+    println!(
+        "Throughput: {:.1} records/sec",
+        total_records as f64 / elapsed.as_secs_f64()
+    );
     println!();
 
     let start = Instant::now();
@@ -83,13 +90,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!();
 
     let start = Instant::now();
-    let _ = db.query_to_int64("SELECT COUNT(*) FROM performance_test", &[]).await?;
+    let _ = db
+        .query_to_int64("SELECT COUNT(*) FROM performance_test", &[])
+        .await?;
     let elapsed = start.elapsed();
     println!("Count query time: {:?}", elapsed);
     println!();
 
     let start = Instant::now();
-    let _ = db.exec("UPDATE performance_test SET score = score + 1", &[]).await?;
+    let _ = db
+        .exec("UPDATE performance_test SET score = score + 1", &[])
+        .await?;
     let elapsed = start.elapsed();
     println!("Update all time: {:?}", elapsed);
     println!();
@@ -116,7 +127,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let elapsed = start.elapsed();
     println!("100 single updates time: {:?}", elapsed);
-    println!("Throughput: {:.1} updates/sec", 100f64 / elapsed.as_secs_f64());
+    println!(
+        "Throughput: {:.1} updates/sec",
+        100f64 / elapsed.as_secs_f64()
+    );
     println!();
 
     db.close().await?;

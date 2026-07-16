@@ -7,8 +7,8 @@
 
 use crate::config::DbConnectionConfig;
 use crate::error::{Db233Error, Result};
-use mysql_async::{Conn, Opts, Pool, Row};
 use mysql_async::prelude::Queryable;
+use mysql_async::{Conn, Opts, Pool, Row};
 use std::sync::Arc;
 
 /// Database connection pool.
@@ -114,15 +114,13 @@ impl DbConnection {
     /// # Returns
     ///
     /// Returns a vector of rows, or an error if the query fails.
-    pub async fn query(
-        &mut self,
-        sql: &str,
-        params: &[mysql_async::Value],
-    ) -> Result<Vec<Row>> {
+    pub async fn query(&mut self, sql: &str, params: &[mysql_async::Value]) -> Result<Vec<Row>> {
         let params: Vec<_> = params.to_vec();
-        let rows = self.conn.exec_map(sql, params, |row: Row| row).await.map_err(|e| {
-            Db233Error::QueryError(format!("query failed: {}", e))
-        })?;
+        let rows = self
+            .conn
+            .exec_map(sql, params, |row: Row| row)
+            .await
+            .map_err(|e| Db233Error::QueryError(format!("query failed: {}", e)))?;
         Ok(rows)
     }
 
@@ -136,15 +134,12 @@ impl DbConnection {
     /// # Returns
     ///
     /// Returns the number of affected rows, or an error if execution fails.
-    pub async fn exec(
-        &mut self,
-        sql: &str,
-        params: &[mysql_async::Value],
-    ) -> Result<u64> {
+    pub async fn exec(&mut self, sql: &str, params: &[mysql_async::Value]) -> Result<u64> {
         let params: Vec<_> = params.to_vec();
-        self.conn.exec_drop(sql, params).await.map_err(|e| {
-            Db233Error::QueryError(format!("exec failed: {}", e))
-        })?;
+        self.conn
+            .exec_drop(sql, params)
+            .await
+            .map_err(|e| Db233Error::QueryError(format!("exec failed: {}", e)))?;
         Ok(1)
     }
 
@@ -156,9 +151,10 @@ impl DbConnection {
     ///
     /// Returns Ok(()) if the connection is healthy, or an error if not.
     pub async fn ping(&mut self) -> Result<()> {
-        self.conn.ping().await.map_err(|e| {
-            Db233Error::ConnectionError(format!("ping failed: {}", e))
-        })
+        self.conn
+            .ping()
+            .await
+            .map_err(|e| Db233Error::ConnectionError(format!("ping failed: {}", e)))
     }
 
     /// Gets a reference to the connection pool.
@@ -172,6 +168,5 @@ impl Drop for DbConnection {
     ///
     /// The connection is automatically returned to the pool when the DbConnection
     /// goes out of scope, allowing it to be reused by other operations.
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }

@@ -57,9 +57,9 @@ pub fn replace_named_parameters(
         };
 
         let param_name = &sql[start_idx + 1..end_idx];
-        let value = params
-            .get(param_name)
-            .ok_or_else(|| Db233Error::ParameterError(format!("missing required parameter: {}", param_name)))?;
+        let value = params.get(param_name).ok_or_else(|| {
+            Db233Error::ParameterError(format!("missing required parameter: {}", param_name))
+        })?;
 
         new_sql.push('?');
         values.push(value.clone());
@@ -113,7 +113,10 @@ mod tests {
         let sql = "SELECT * FROM users WHERE id={userId} AND status={status}";
         let mut params = HashMap::new();
         params.insert("userId".to_string(), Value::Int(123));
-        params.insert("status".to_string(), Value::Bytes("active".as_bytes().to_vec()));
+        params.insert(
+            "status".to_string(),
+            Value::Bytes("active".as_bytes().to_vec()),
+        );
 
         let (new_sql, values) = replace_named_parameters(sql, &params).unwrap();
 

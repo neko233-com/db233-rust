@@ -1,9 +1,9 @@
 use db233::{
     config::DbConnectionConfig,
     db::Db,
+    define_entity_with_base,
     entity::{BaseEntity, DbEntity},
     mysql_async::Value,
-    define_entity_with_base,
 };
 
 define_entity_with_base!(User, "users",
@@ -17,18 +17,13 @@ define_entity_with_base!(User, "users",
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let config = DbConnectionConfig::new(
-        "127.0.0.1",
-        3306,
-        "root",
-        "root",
-        "db233_rust",
-    );
+    let config = DbConnectionConfig::new("127.0.0.1", 3306, "root", "root", "db233_rust");
 
     let mut db = Db::new(config, 1).await?;
 
-    let _ = db.exec(
-        r#"CREATE TABLE IF NOT EXISTS users (
+    let _ = db
+        .exec(
+            r#"CREATE TABLE IF NOT EXISTS users (
             id BIGINT PRIMARY KEY AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255) UNIQUE,
@@ -37,8 +32,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             created_at BIGINT,
             updated_at BIGINT
         )"#,
-        &[],
-    ).await;
+            &[],
+        )
+        .await;
 
     let mut user = User {
         base: BaseEntity::new(),
@@ -63,12 +59,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut params = std::collections::HashMap::new();
     params.insert("minAge".to_string(), Value::Int(18));
-    params.insert("status".to_string(), Value::Bytes("active".as_bytes().to_vec()));
+    params.insert(
+        "status".to_string(),
+        Value::Bytes("active".as_bytes().to_vec()),
+    );
 
-    let rows = db.query_named("SELECT * FROM users WHERE age > {minAge} AND status={status}", &params).await?;
+    let rows = db
+        .query_named(
+            "SELECT * FROM users WHERE age > {minAge} AND status={status}",
+            &params,
+        )
+        .await?;
     println!("Query named results: {:?}", rows);
 
-    let ids = db.query_named_to_int64_slice("SELECT id FROM users WHERE status={status}", &params).await?;
+    let ids = db
+        .query_named_to_int64_slice("SELECT id FROM users WHERE status={status}", &params)
+        .await?;
     println!("User IDs: {:?}", ids);
 
     db.close().await?;

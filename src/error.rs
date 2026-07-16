@@ -61,9 +61,7 @@ pub enum Db233Error {
 impl From<mysql_async::Error> for Db233Error {
     fn from(e: mysql_async::Error) -> Self {
         match e {
-            mysql_async::Error::Io(_) => {
-                Db233Error::ConnectionError(e.to_string())
-            }
+            mysql_async::Error::Io(_) => Db233Error::ConnectionError(e.to_string()),
             _ => Db233Error::QueryError(e.to_string()),
         }
     }

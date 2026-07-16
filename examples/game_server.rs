@@ -1,9 +1,9 @@
 use db233::{
     config::{CacheableEntitySpec, DbConnectionConfig, GameDbOptions},
     db::Db,
+    define_entity_with_base,
     entity::{BaseEntity, DbEntity},
     session::SessionRepository,
-    define_entity_with_base,
 };
 
 define_entity_with_base!(PlayerBaseEntity, "player_base",
@@ -21,18 +21,13 @@ define_entity_with_base!(PlayerBagEntity, "player_bag",
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::init();
 
-    let config = DbConnectionConfig::new(
-        "127.0.0.1",
-        3306,
-        "root",
-        "root",
-        "db233_rust",
-    );
+    let config = DbConnectionConfig::new("127.0.0.1", 3306, "root", "root", "db233_rust");
 
     let mut db = Db::new(config.clone(), 1).await?;
 
-    let _ = db.exec(
-        r#"CREATE TABLE IF NOT EXISTS player_base (
+    let _ = db
+        .exec(
+            r#"CREATE TABLE IF NOT EXISTS player_base (
             id BIGINT PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
             level INT DEFAULT 1,
@@ -40,19 +35,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             created_at BIGINT,
             updated_at BIGINT
         )"#,
-        &[],
-    ).await;
+            &[],
+        )
+        .await;
 
-    let _ = db.exec(
-        r#"CREATE TABLE IF NOT EXISTS player_bag (
+    let _ = db
+        .exec(
+            r#"CREATE TABLE IF NOT EXISTS player_bag (
             id BIGINT PRIMARY KEY,
             gold BIGINT DEFAULT 0,
             items TEXT,
             created_at BIGINT,
             updated_at BIGINT
         )"#,
-        &[],
-    ).await;
+            &[],
+        )
+        .await;
 
     let opts = GameDbOptions {
         enable_entity_cache: true,
@@ -67,10 +65,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let player_id = 1001;
 
-    let session = session_repo.open_session(player_id, &[
-        "db233::examples::game_server::PlayerBaseEntity",
-        "db233::examples::game_server::PlayerBagEntity",
-    ]).await?;
+    let session = session_repo
+        .open_session(
+            player_id,
+            &[
+                "db233::examples::game_server::PlayerBaseEntity",
+                "db233::examples::game_server::PlayerBagEntity",
+            ],
+        )
+        .await?;
 
     let base = session.get_or_load::<PlayerBaseEntity>().await?;
     match base {

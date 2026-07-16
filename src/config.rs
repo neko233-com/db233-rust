@@ -80,13 +80,7 @@ impl DbConnectionConfig {
     /// - `username`: Database username.
     /// - `password`: Database password.
     /// - `database`: Database name.
-    pub fn new(
-        host: &str,
-        port: u16,
-        username: &str,
-        password: &str,
-        database: &str,
-    ) -> Self {
+    pub fn new(host: &str, port: u16, username: &str, password: &str, database: &str) -> Self {
         Self {
             host: host.to_string(),
             port,

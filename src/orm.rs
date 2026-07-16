@@ -11,9 +11,9 @@
 
 use crate::entity::DbEntity;
 use crate::error::{Db233Error, Result};
+use base64::{engine::general_purpose, Engine};
 use mysql_async::Row;
 use serde::de::DeserializeOwned;
-use base64::{engine::general_purpose, Engine};
 
 /// ORM handler for SQL generation and entity mapping.
 ///
@@ -31,9 +31,7 @@ impl OrmHandler {
     /// # Returns
     ///
     /// Returns a vector of deserialized entities, or an error if mapping fails.
-    pub async fn query_to_entity<T>(
-        rows: Vec<Row>,
-    ) -> Result<Vec<T>>
+    pub async fn query_to_entity<T>(rows: Vec<Row>) -> Result<Vec<T>>
     where
         T: DeserializeOwned + Send + 'static,
     {
@@ -87,10 +85,10 @@ impl OrmHandler {
     ///
     /// Returns a tuple of (SQL statement, parameter values).
     pub fn build_insert_sql<T: DbEntity>(entity: &T) -> Result<(String, Vec<mysql_async::Value>)> {
-        let json_str = serde_json::to_string(entity)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
-        let json_val: serde_json::Value = serde_json::from_str(&json_str)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_str =
+            serde_json::to_string(entity).map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_val: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| Db233Error::MappingError(e.to_string()))?;
 
         let mut columns = Vec::new();
         let mut placeholders = Vec::new();
@@ -129,10 +127,10 @@ impl OrmHandler {
     ///
     /// Returns a tuple of (SQL statement, parameter values).
     pub fn build_update_sql<T: DbEntity>(entity: &T) -> Result<(String, Vec<mysql_async::Value>)> {
-        let json_str = serde_json::to_string(entity)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
-        let json_val: serde_json::Value = serde_json::from_str(&json_str)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_str =
+            serde_json::to_string(entity).map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_val: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| Db233Error::MappingError(e.to_string()))?;
 
         let mut set_clause = Vec::new();
         let mut values = Vec::new();
@@ -176,10 +174,10 @@ impl OrmHandler {
     ///
     /// Returns a tuple of (SQL statement, parameter values).
     pub fn build_upsert_sql<T: DbEntity>(entity: &T) -> Result<(String, Vec<mysql_async::Value>)> {
-        let json_str = serde_json::to_string(entity)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
-        let json_val: serde_json::Value = serde_json::from_str(&json_str)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_str =
+            serde_json::to_string(entity).map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_val: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| Db233Error::MappingError(e.to_string()))?;
 
         let mut columns = Vec::new();
         let mut placeholders = Vec::new();
@@ -230,13 +228,15 @@ impl OrmHandler {
         entities: &[T],
     ) -> Result<(String, Vec<mysql_async::Value>)> {
         if entities.is_empty() {
-            return Err(Db233Error::ParameterError("empty entities list".to_string()));
+            return Err(Db233Error::ParameterError(
+                "empty entities list".to_string(),
+            ));
         }
 
         let json_str = serde_json::to_string(&entities[0])
             .map_err(|e| Db233Error::MappingError(e.to_string()))?;
-        let json_val: serde_json::Value = serde_json::from_str(&json_str)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))?;
+        let json_val: serde_json::Value =
+            serde_json::from_str(&json_str).map_err(|e| Db233Error::MappingError(e.to_string()))?;
 
         let mut columns = Vec::new();
         let mut update_clause = Vec::new();
@@ -270,7 +270,10 @@ impl OrmHandler {
                     }
                 }
                 values.extend(row_values);
-                rows_sql.push(format!("({})", "?,".repeat(columns.len()).trim_end_matches(',')));
+                rows_sql.push(format!(
+                    "({})",
+                    "?,".repeat(columns.len()).trim_end_matches(',')
+                ));
             }
         }
 
@@ -366,8 +369,7 @@ pub trait FromRowJson: DeserializeOwned + Sized {
     /// Returns the deserialized entity, or an error if conversion fails.
     fn from_row_json(row: &Row) -> Result<Self> {
         let json_val = row_to_json(row);
-        serde_json::from_value(json_val)
-            .map_err(|e| Db233Error::MappingError(e.to_string()))
+        serde_json::from_value(json_val).map_err(|e| Db233Error::MappingError(e.to_string()))
     }
 }
 
@@ -397,11 +399,16 @@ fn convert_mysql_value(value: mysql_async::Value) -> serde_json::Value {
         mysql_async::Value::NULL => serde_json::Value::Null,
         mysql_async::Value::Int(i) => serde_json::Value::Number(i.into()),
         mysql_async::Value::UInt(u) => serde_json::Value::Number(u.into()),
-        mysql_async::Value::Float(f) => serde_json::Value::Number(serde_json::Number::from_f64(f.into()).unwrap()),
-        mysql_async::Value::Double(f) => serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap()),
-        mysql_async::Value::Date(y, m, d, hh, mm, ss, _) => {
-            serde_json::Value::String(format!("{}-{:02}-{:02} {:02}:{:02}:{:02}", y, m, d, hh, mm, ss))
+        mysql_async::Value::Float(f) => {
+            serde_json::Value::Number(serde_json::Number::from_f64(f.into()).unwrap())
         }
+        mysql_async::Value::Double(f) => {
+            serde_json::Value::Number(serde_json::Number::from_f64(f).unwrap())
+        }
+        mysql_async::Value::Date(y, m, d, hh, mm, ss, _) => serde_json::Value::String(format!(
+            "{}-{:02}-{:02} {:02}:{:02}:{:02}",
+            y, m, d, hh, mm, ss
+        )),
         mysql_async::Value::Time(_neg, _days, hh, mm, ss, _) => {
             serde_json::Value::String(format!("{:02}:{:02}:{:02}", hh, mm, ss))
         }
